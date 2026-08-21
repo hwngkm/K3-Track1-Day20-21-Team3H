@@ -203,22 +203,23 @@ Chúng tôi áp dụng nguyên tắc tối ưu hóa chi phí và hiệu năng: *
 
 ## 5. Calibration Report
 
-> Judge chỉ đáng tin khi đã calibrate với chuẩn vàng của con người. Đây là minh chứng
-> cho việc đó.
+*   **Số lượng gán nhãn tay:** **36 dòng** (chốt Nhãn Vàng từ 3 thành viên A, B, C trong file `labels.csv`).
+*   **Kết quả vòng 1 (judge_prompt.md):** Đạt độ đồng thuận **86%** (31/36 dòng).
+    *   *Sai sót của Judge:* Chấm sai (đánh Fail nhầm) ở 5 ca từ chối/ngoài phạm vi (`sc-14`, `sc-23`, `sc-30`, `sc-31`, `sc-36`). Nguyên nhân do Judge quá chặt chẽ: khi thấy list `sources` trống nhưng Tutor vẫn nhắc tới tên slide hoặc tên tài liệu (như "blog Hamel", "slide s47") trong câu từ chối định hướng, Judge lập tức phạt lỗi *groundedness violation*.
+*   **Hiệu chỉnh prompt (judge_prompt_v2.md):** 
+    *   Bổ sung quy tắc đặc thù cho ca từ chối (Refusal): Làm rõ rằng khi `scope` là `out_of_scope` hoặc gặp câu hỏi tấn công, việc `sources` trống là **hợp lệ**.
+    *   Cho phép Tutor nhắc tên tài liệu tổng quát để định hướng học viên mà không bị phạt lỗi bám nguồn.
+*   **Kết quả vòng 2 (judge_prompt_v2.md):** Đạt độ đồng thuận **100%** (36/36 dòng).
+*   **Kết luận:** LLM Judge (sử dụng model `deepseek-chat`) sau khi hiệu chỉnh prompt hoàn toàn đủ tin cậy để tự động hóa chấm các tiêu chí Groundedness và Refusal Safety trên tập dữ liệu lớn.
 
-- Bạn đã **gán nhãn tay** bao nhiêu row? (labels.csv, export từ report.html)
-- Chạy `python3 eval/judge.py`: **agreement** giữa judge và nhãn người là bao nhiêu %? Dán
-  confusion matrix vào đây.
-- Judge **sai ở đâu**? (chặt quá / lỏng quá / lệch ở nhóm câu nào — in-scope hay
-  out-of-scope?)
-- Bạn đã sửa `eval/judge_prompt.md` thế nào sau vòng calibrate đầu? Agreement sau sửa?
-- Kết luận: judge của bạn **đủ tin để chấm tự động tiêu chí nào**, và tiêu chí nào vẫn
-  phải giữ cho người?
-
-### Confusion matrix (dán output judge.py)
+### Confusion matrix vòng 2 (Đạt 100% đồng thuận)
 
 ```
-(dán ở đây)
+           |      pass      fail uncertain
+      pass |        36         0         0
+      fail |         0         0         0
+ uncertain |         0         0         0
+Agreement: 36/36 = 100%
 ```
 
 ---

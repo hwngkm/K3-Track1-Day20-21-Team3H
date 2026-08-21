@@ -22,7 +22,7 @@ _tracer = tracing.init_tracer()
 JUDGE_MODEL = os.environ.get("EVAL_JUDGE_MODEL", "openai/gpt-4o-mini")
 
 # judge_prompt.md nằm cạnh file này trong eval/ — resolve theo __file__, không theo cwd
-PROMPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "judge_prompt.md")
+PROMPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "judge_prompt_v2.md")
 
 def read_jsonl(path):
     if not os.path.exists(path):
