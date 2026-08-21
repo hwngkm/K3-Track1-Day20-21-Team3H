@@ -65,10 +65,34 @@ def check_quote_verbatim(rec, section_tokens):
     return True, None
 
 
+def check_scope_value(rec):
+    """scope phải là 'in_scope' hoặc 'out_of_scope'."""
+    out = rec.get("output") or {}
+    if out.get("_parse_error"):
+        return None, "bỏ qua (JSON vỡ)"
+    scope = out.get("scope")
+    if scope not in ("in_scope", "out_of_scope"):
+        return False, f'scope không hợp lệ: "{scope}"'
+    return True, None
+
+
+def check_followup_count(rec):
+    """followup_questions phải có đúng 3 câu."""
+    out = rec.get("output") or {}
+    if out.get("_parse_error"):
+        return None, "bỏ qua (JSON vỡ)"
+    fu = out.get("followup_questions", [])
+    if len(fu) != 3:
+        return False, f'followup_questions có {len(fu)} câu (cần 3)'
+    return True, None
+
+
 CHECKS = [  # thêm check của nhóm vào đây
     ("schema_valid", check_schema),
     ("citation_exists", check_citation_exists),
     ("quote_verbatim", check_quote_verbatim),
+    ("scope_value", check_scope_value),
+    ("followup_count", check_followup_count),
 ]
 
 
@@ -86,7 +110,7 @@ def main(path="results.jsonl"):
         sid = rec.get("scenario_id", "?")
         line = [sid]
         for name, fn in CHECKS:
-            if fn is check_schema:
+            if fn in (check_schema, check_scope_value, check_followup_count):
                 ok, reason = fn(rec)
             elif fn is check_citation_exists:
                 ok, reason = fn(rec, valid_ids)
