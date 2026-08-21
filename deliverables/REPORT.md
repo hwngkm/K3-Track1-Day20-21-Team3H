@@ -12,18 +12,27 @@ results-vN.jsonl, labels.csv, judge-prompt-vN.md, verdicts-vN.jsonl, braintrust-
 > Lưới input = trục "ai hỏi" × "hỏi kiểu gì". LLM giúp sinh input, con người kiểm soát
 > coverage. Trả lời các câu hỏi sau rồi vẽ lưới của bạn.
 
-- AI Tutor của bạn phục vụ những **nhóm người dùng** nào? (học viên mới, học viên đang
-  làm bài, học viên ôn lại, PM khác team...?)
-- Mỗi nhóm có những **ý định (intent)** hỏi nào? (hỏi khái niệm, xin ví dụ, hỏi ngoài
-  lề, xin đáp án, hỏi mơ hồ...?)
-- Ô nào trong lưới là **rủi ro cao** nhất (trả lời sai thì hại người học)? Ô nào **tần
-  suất cao** nhất?
+- **Nhóm người dùng (User Personas):** 
+  1. *U1 - Học viên mới (Beginner Learner):* Hỏi định nghĩa cốt lõi, khái niệm, thuật ngữ.
+  2. *U2 - Học viên làm Lab / Capstone (Practicing Learner):* Hỏi debug, chạy lệnh, hỏi cộc lốc/deixis, xin đáp án.
+  3. *U3 - Lab Coach (Trợ giảng học tập):* Tra cứu liên module để giải thích nhanh, xin gợi ý sư phạm dẫn dắt học viên.
+  4. *U4 - Giảng viên (Course Author):* Kiểm tra tính nhất quán, phát hiện lỗ hổng kiến thức trong corpus.
+  5. *U5 - Người thử thách hệ thống (Adversarial):* Tấn công injection, jailbreak, ép bịa nguồn.
+- **Ý định người dùng (User Intents):**
+  - *I1:* Khái niệm lý thuyết. *I2:* Giải thích ngữ cảnh Slide (Deixis). *I3:* Thực hành & Debug. *I4:* Tra cứu liên Module. *I5:* Kiểm tra tính nhất quán. *I6:* Gợi mở sư phạm. *I7:* Xin đáp án trực tiếp. *I8:* Ngoài phạm vi. *I9:* Adversarial/Injection.
+- **Phân tích rủi ro & tần suất:**
+  - *Tần suất cao nhất:* `U1 × I1` (khái niệm) và `U2 × I2` (hỏi slide deixis).
+  - *Rủi ro cao nhất:* `U2 × I7` (gian lận/bịa đáp án) và `U5 × I9` (bịa nguồn/injection).
 
 ### Lưới của bạn
 
-| Nhóm user \ Intent | ... | ... | ... |
-|---|---|---|---|
-| ... | | | |
+| Nhóm user \ Intent | I1. Khái niệm | I2. Slide Deixis | I3. Debug & Tool | I4. Tra cứu Module | I5. Tính nhất quán | I6. Gợi mở Sư phạm | I7. Xin đáp án | I8. Ngoài lề | I9. Adversarial |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **U1. Học viên mới** | ⭐⭐⭐ Cao nhất | 🔹 TB | 🔸 Thấp | 🔸 Thấp | 🔸 Thấp | 🔹 TB | 🔸 Thấp | 🔹 TB | 🔸 Thấp |
+| **U2. Học viên Lab** | 🔹 TB | ⭐⭐⭐ Cao | ⭐⭐⭐ Cao | 🔹 TB | 🔸 Thấp | 🔹 TB | ⚠️ Rủi ro | 🔸 Thấp | 🔸 Thấp |
+| **U3. Lab Coach** | 🔹 TB | 🔹 TB | ⭐⭐⭐ Cao | ⭐⭐⭐ Cao | 🔹 TB | ⭐⭐⭐ Cao | 🔸 Không | 🔸 Thấp | 🔸 Thấp |
+| **U4. Giảng viên** | 🔹 TB | 🔸 Thấp | 🔸 Thấp | ⭐⭐⭐ Cao | ⚠️ Rủi ro | 🔹 TB | 🔸 Không | 🔸 Thấp | 🔸 Thấp |
+| **U5. Thử thách** | 🔸 Thấp | 🔸 Thấp | 🔸 Thấp | 🔸 Thấp | 🔸 Thấp | 🔸 Thấp | ⚠️ Rủi ro | ⭐⭐⭐ Cao | ⚠️ Rủi ro |
 
 ---
 
@@ -31,19 +40,56 @@ results-vN.jsonl, labels.csv, judge-prompt-vN.md, verdicts-vN.jsonl, braintrust-
 
 > Dataset là "bộ đề thi" của tutor. Nêu rõ nó phủ những ô nào trong input-grid.
 
-- `dataset.jsonl` của bạn có **bao nhiêu câu**? Mỗi câu thuộc ô nào trong lưới input?
-- Tỉ lệ in-scope / out-of-scope / mơ hồ / adversarial (xin đáp án, prompt injection)
-  là bao nhiêu? Vì sao chọn tỉ lệ đó?
-- Câu nào bạn **lấy từ trace thật** (người dùng thật hỏi), câu nào do bạn/LLM sinh ra?
-- Ai đã **review** dataset? Phát hiện gì khi review (câu trùng ý, câu quá dễ, thiếu ô
-  rủi ro cao)?
-- Nếu chỉ được giữ 10 câu, bạn giữ 10 câu nào? Vì sao?
+- `dataset.jsonl` của bạn có **36 câu**. Bao gồm:
+  - 15 câu **In-scope** (Lý thuyết, quy trình, debug, liên module).
+  - 7 câu **Deixis / Mơ hồ kèm ngữ cảnh Slide**.
+  - 6 câu **Out-of-scope** (Thời tiết, công nghệ khác, đời sống).
+  - 8 câu **Adversarial & Xin đáp án** (Prompt injection, cheat code, bịa nguồn).
+- **Tỉ lệ phân bổ:** In-scope & Deixis (~61%), Out-of-scope (~17%), Adversarial & Cheat (~22%). Tỷ lệ này giúp đánh giá triệt để tính đúng đắn khi trả lời (Groundedness) song song với năng lực phòng vệ (Guardrails & Refusal).
+- **Nguồn gốc:** Các câu in-scope và deixis lấy cảm hứng từ trace học tập thực tế và slide khóa học VLearn. Các câu out-of-scope/adversarial được nhóm thảo luận thiết kế để bẻ gãy hệ thống.
+- **Review:** Được cả 3 thành viên review chéo. Phát hiện ban đầu: câu deixis không slide context sẽ bị từ chối; câu xin đáp án cần siết chặt giọng điệu sư phạm.
+- **Nếu chỉ giữ 10 câu:** Giữ 3 câu in-scope lý thuyết khó, 3 câu deixis/slide quan trọng, 2 câu xin đáp án/adversarial và 2 câu out-of-scope điển hình.
 
 ### Danh sách scenario (bảng tóm tắt)
 
 | scenario_id | ô trong lưới | expected | nguồn câu hỏi |
 |---|---|---|---|
-| | | | |
+| sc-01-in-def | U1 × I1 | in_scope | Tự soạn (Thành viên A) |
+| sc-02-in-def | U1 × I1 | in_scope | Tự soạn (Thành viên A) |
+| sc-03-in-def | U1 × I1 | in_scope | Tự soạn (Thành viên A) |
+| sc-04-in-def | U1 × I1 | in_scope | Tự soạn (Thành viên A) |
+| sc-05-in-def | U1 × I1 | in_scope | Tự soạn (Thành viên A) |
+| sc-06-in-deixis-s51 | U2 × I2 | in_scope | Slide Deck (Thành viên A) |
+| sc-07-in-deixis-s29 | U2 × I2 | in_scope | Slide Deck (Thành viên A) |
+| sc-08-in-deixis-s47 | U2 × I2 | in_scope | Slide Deck (Thành viên A) |
+| sc-09-in-deixis-s12 | U2 × I2 | in_scope | Slide Deck (Thành viên A) |
+| sc-10-in-deixis-s38 | U2 × I2 | in_scope | Slide Deck (Thành viên A) |
+| sc-11-in-howto | U2 × I3 | in_scope | Tự soạn (Thành viên A) |
+| sc-12-in-howto | U2 × I3 | in_scope | Tự soạn (Thành viên A) |
+| sc-13-in-howto | U3 × I3 | in_scope | Tự soạn (Thành viên A) |
+| sc-14-in-howto | U2 × I3 | in_scope | Tự soạn (Thành viên B) |
+| sc-15-in-howto | U3 × I3 | in_scope | Tự soạn (Thành viên B) |
+| sc-16-out-weather | U1 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-17-out-java | U2 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-18-out-react | U2 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-19-out-cook | U1 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-20-out-stock | U3 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-21-out-math | U1 × I8 | out_of_scope | Tự soạn (Thành viên B) |
+| sc-22-tech-trouble | U2 × I3 | in_scope | Tự soạn (Thành viên B) |
+| sc-23-tech-trouble | U2 × I3 | in_scope | Tự soạn (Thành viên B) |
+| sc-24-cross-module | U3 × I4 | in_scope | Tự soạn (Thành viên B) |
+| sc-25-cross-module | U3 × I4 | in_scope | Tự soạn (Thành viên B) |
+| sc-26-consistency | U4 × I5 | in_scope | Tự soạn (Thành viên C) |
+| sc-27-pedagogy-coach | U3 × I6 | in_scope | Tự soạn (Thành viên C) |
+| sc-28-pedagogy-student | U2 × I6 | in_scope | Tự soạn (Thành viên C) |
+| sc-29-cheat-capstone | U2 × I7 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-30-cheat-code | U2 × I7 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-31-cheat-prompt | U5 × I7 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-32-adversarial-injection | U5 × I9 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-33-adversarial-injection | U5 × I9 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-34-adversarial-fake-source | U5 × I9 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-35-adversarial-roleplay | U5 × I9 | out_of_scope | Tự soạn (Thành viên C) |
+| sc-36-adversarial-jailbreak | U5 × I9 | out_of_scope | Tự soạn (Thành viên C) |
 
 ---
 
