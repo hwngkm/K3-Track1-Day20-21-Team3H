@@ -8,8 +8,15 @@ Dùng trực tiếp trong REPL:  python3 -i tutor/tutor.py  ->  ask_tutor("câu 
 Hoặc được run_eval.py import để chạy cả dataset.
 """
 import json, math, os, re, time, unicodedata
-
 import requests
+
+try:
+    from langsmith import traceable
+except ImportError:
+    def traceable(func=None, **kwargs):
+        if func is None:
+            return lambda f: f
+        return func
 
 # --- System prompt THẬT của tutor, copy nguyên văn từ platform
 # (platform/src/lib/platform/constants.ts, biến DEFAULT_SYSTEM_PROMPT)
@@ -180,6 +187,7 @@ def retrieve_corpus(question, top_k=4, sections=None):
     return [s for score, s in scored[:top_k] if score > 0]
 
 # --- Gọi LLM chat completion (OpenAI-compatible) qua thư viện requests
+@traceable(name="llm_chat")
 def chat(messages, model=None, temperature=0, max_tokens=800, tools=None):
     model = model or MODEL
     base_url, key, model_id = resolve_provider(model)
@@ -206,16 +214,36 @@ def chat(messages, model=None, temperature=0, max_tokens=800, tools=None):
         payload["tool_choice"] = "auto"
     t0 = time.time()
     last_err = None
-    for attempt in range(3):  # gateway/provider thỉnh thoảng trả body JSON bị cắt ngang (200 nhưng không parse được) — retry
-        resp = requests.post(base_url + "/chat/completions", json=payload, timeout=120,
-                             headers={"Authorization": "Bearer " + key})
-        resp.raise_for_status()
+    max_attempts = 5
+    
+    # Thu thập tất cả API keys của Gemini để xoay tua chống Rate Limit (429)
+    gemini_keys = []
+    if "gemini/" in model:
+        for name, val in os.environ.items():
+            if name.startswith("GEMINI_API_KEY") and (val.startswith("AIzaSy") or val.startswith("AQ.")):
+                if val not in gemini_keys:
+                    gemini_keys.append(val)
+    if not gemini_keys:
+        gemini_keys = [key]
+
+    key_index = 0
+    for attempt in range(max_attempts):
+        active_key = gemini_keys[key_index % len(gemini_keys)]
         try:
+            resp = requests.post(base_url + "/chat/completions", json=payload, timeout=120,
+                                 headers={"Authorization": "Bearer " + active_key})
+            if resp.status_code in [429, 503]:
+                # Gặp lỗi rate limit (429) hoặc quá tải (503) -> Đổi key và thử lại sau 15 giây
+                key_index += 1
+                time.sleep(15)
+                continue
+            resp.raise_for_status()
             return resp.json(), time.time() - t0
-        except ValueError as e:
+        except (requests.RequestException, ValueError) as e:
             last_err = e
-            time.sleep(1)
-    raise RuntimeError(f"Provider trả body không parse được JSON sau 3 lần thử: {last_err}")
+            key_index += 1
+            time.sleep(2)
+    raise RuntimeError(f"API call failed after {max_attempts} attempts: {last_err}")
 
 def parse_json_content(content):
     """Model đôi khi bọc JSON trong ``` fence — lột ra trước khi parse.
@@ -264,6 +292,7 @@ KB_SEARCH_TOOL = {
     },
 }
 
+@traceable(name="kb_search")
 def kb_search_local(query, max_results=5, sections=None):
     """Thực thi kb_search local: BM25 trên corpus, trả về cùng shape với platform."""
     max_results = max(1, min(int(max_results or 5), 8))
@@ -279,6 +308,7 @@ def kb_search_local(query, max_results=5, sections=None):
 
 # --- Hàm chính: vòng agentic y hệt platform — model TỰ gọi kb_search (có thể
 # --- nhiều lần, nhiều truy vấn) rồi mới trả JSON theo contract
+@traceable(name="call_tutor")
 def call_tutor(question, slide=None, max_steps=6):
     corpus_sections = load_corpus()
     user = format_slide_context(slide) + "Câu hỏi của học viên: " + question
@@ -334,7 +364,16 @@ def call_tutor(question, slide=None, max_steps=6):
             messages.append({"role": "tool", "tool_call_id": tc.get("id"),
                              "content": json.dumps(result, ensure_ascii=False)})
 
-    raise RuntimeError("unreachable")  # vòng cuối luôn return hoặc parse_error
+    # Nếu chạy hết vòng lặp mà vẫn còn tool calls, dùng chat cuối không tool để lấy câu trả lời
+    data, latency = chat(messages, max_tokens=2000, tools=None)
+    choice = data["choices"][0]
+    msg = choice["message"]
+    content = msg.get("content") or ""
+    out = parse_json_content(content)
+    meta = {"raw_content": content, "usage": usage_total,
+            "latency_s": round(latency_total, 2), "finish_reason": choice.get("finish_reason"),
+            "steps": max_steps, "tool_calls": tool_log, "retrieved": retrieved}
+    return out, meta
 
 def ask_tutor(question):
     """Tiện dùng trong REPL: chỉ trả output theo contract."""

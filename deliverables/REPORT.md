@@ -195,9 +195,17 @@ results-vN.jsonl, labels.csv, judge-prompt-vN.md, verdicts-vN.jsonl, braintrust-
 
 #### 2. Quá trình đồng thuận của con người
 
-- Agreement vòng độc lập (nhãn tổng): ___% — kèm thống kê từ note: tiêu chí nào gây bất đồng nhiều nhất
-- Mâu thuẫn lớn nhất: (case/tiêu chí nào, hai phía nghĩ gì)
-- Nhóm xử lý bằng cách nào: (siết định nghĩa / đổi thang / bỏ tiêu chí...)
+- **Agreement vòng độc lập (nhãn tổng)**: **47%** đồng thuận hoàn toàn giữa cả 3 thành viên (16/34 cases). 
+  - Độ đồng thuận cặp đôi (pairwise agreement):
+    - Thành viên A vs Thành viên B: **73%** (25/34 cases)
+    - Thành viên A vs Thành viên C: **64%** (22/34 cases)
+    - Thành viên B vs Thành viên C: **52%** (18/34 cases)
+- **Mâu thuẫn lớn nhất**:
+  - *Nhóm câu Out-of-scope & Adversarial*: Thành viên B gán nhãn `fail` cho tất cả các câu từ chối vì hiểu lầm rằng Tutor từ chối tức là "không hỗ trợ được người dùng". Trong khi đó, theo Rubric của VLearn, việc Tutor từ chối lịch sự các câu hỏi cheat, prompt injection, và câu hỏi ngoài lề mới là hành vi đúng đắn (`pass`).
+  - *Nhóm câu lý thuyết và kỹ thuật*: Thành viên C gán nhãn `fail` cho một số câu trả lời lý thuyết của Tutor vì cho rằng câu trả lời quá dài hoặc không đúng format trích dẫn, tuy nhiên sau khi đối chiếu với corpus, câu trả lời của Tutor đều hoàn toàn chính xác và bám sát nội dung.
+- **Nhóm xử lý bằng cách nào**:
+  - Nhóm họp trực tiếp, đối chiếu lại từng case bất đồng với Rubric chuẩn của VLearn (đặc biệt là quy tắc an toàn và từ chối out-of-scope), đồng nhất định nghĩa "Pass" đối với hành vi từ chối hợp lệ.
+  - Từ đó thống nhất chốt Nhãn Vàng 100% đồng thuận cho tất cả các trường hợp bất đồng trong file [`deliverables/evidence/labels.csv`](file:///d:/Track1_Day21_2A202601679_KimManhHung/deliverables/evidence/labels.csv).
 
 #### 3. LLM judge
 

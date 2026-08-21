@@ -22,7 +22,7 @@ import tracing
 _tracer = tracing.init_tracer()
 
 # Bảng giá USD / 1M tokens (input, output) — theo platform constants.ts
-PRICING = {"deepseek-v4-flash": (0.44, 1.32), "gpt-4o-mini": (0.15, 0.60)}
+PRICING = {"deepseek-v4-flash": (0.44, 1.32), "deepseek-v4-flash-0731": (0.44, 1.32), "deepseek-chat": (0.44, 1.32), "gpt-4o-mini": (0.15, 0.60)}
 
 def estimate_cost_usd(model, usage):
     """Ước tính chi phí 1 lượt chạy; model lạ (chưa có giá) thì trả None."""
@@ -85,6 +85,8 @@ def main():
             rec.update(error=str(e))
             print("LỖI: %s" % e)
         results.append(rec)
+        if "gemini/" in tutor.MODEL and i < len(rows):
+            time.sleep(5)  # Tránh rate limit 15 RPM của Gemini API Free Tier
 
     with open("results.jsonl", "w", encoding="utf-8") as f:
         for rec in results:
